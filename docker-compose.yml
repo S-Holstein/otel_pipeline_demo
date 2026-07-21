@@ -13,6 +13,7 @@ services:
     command: ["--config=/etc/otel-col/config.yaml"]
     ports:
       - "4317:4317" # Nimmt Metriken UND Traces via gRPC an
+      - "4318:4318" # Wichtig für HTTP-Push aus Ihrer IDE
       - "8889:8889"
     depends_on:
       - operaton
@@ -21,6 +22,10 @@ services:
     image: prom/prometheus:v3.13.1
     volumes:
       - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-otlp-receiver"
+      - "--enable-feature=exemplar-storage"
     ports:
       - "9090:9090"
     depends_on:
@@ -36,7 +41,7 @@ services:
 
   # NEU: Grafana für das gemeinsame Dashboard
   grafana:
-    image: grafana/grafana:11.0.0
+    image: grafana/grafana:12.4.5
     ports:
       - "3000:3000" # Die Grafana Web-Oberfläche
     depends_on:

@@ -5,11 +5,14 @@ receivers:
         endpoint: "0.0.0.0:4317"
 
 exporters:
-  prometheus:
-    endpoint: "0.0.0.0:8889"
-    namespace: "otel"
+  # Aktualisierter Pfad für Prometheus v3 Native OTLP
+  otlphttp/prometheus:
+    endpoint: "http://prometheus:9090/api/v1/otlp"
+    tls:
+      insecure: true
 
-  # NEU: Exportiert Traces via OTLP gRPC an Jaeger
+
+  # Exportiert Traces via OTLP gRPC an Jaeger
   otlp/jaeger:
     endpoint: "jaeger:4317"
     tls:
@@ -23,9 +26,8 @@ service:
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [prometheus]
+      exporters: [otlphttp/prometheus] # Angepasst auf OTLP
 
-    # NEU: Aktiviert die Trace-Pipeline
     traces:
       receivers: [otlp]
       processors: [batch]
