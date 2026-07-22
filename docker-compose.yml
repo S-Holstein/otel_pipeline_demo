@@ -12,11 +12,11 @@ services:
       - ./otel-config.yaml:/etc/otel-col/config.yaml
     command: ["--config=/etc/otel-col/config.yaml"]
     ports:
-      - "4317:4317" # Nimmt Metriken UND Traces via gRPC an
-      - "4318:4318" # Wichtig für HTTP-Push aus Ihrer IDE
+      - "4317:4317" # Nimmt Metriken, Traces UND Logs via gRPC an
       - "8889:8889"
     depends_on:
       - operaton
+      - loki # Wartet, bis Loki bereit ist
 
   prometheus:
     image: prom/prometheus:v3.13.1
@@ -31,19 +31,25 @@ services:
     depends_on:
       - otel-collector
 
-  # NEU: Jaeger für die Visualisierung der Traces
   jaeger:
     image: jaegertracing/all-in-one:1.53
     ports:
-      - "16686:16686" # Die Jaeger Web-Oberfläche für den Browser
+      - "16686:16686"
     environment:
       - COLLECTOR_OTLP_ENABLED=true
 
-  # NEU: Grafana für das gemeinsame Dashboard
+  # NEU: Loki Service für die Log-Speicherung
+  loki:
+    image: grafana/loki:3.0.0
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100" # Die OTLP-Schnittstelle von Loki läuft hierüber
+
   grafana:
     image: grafana/grafana:12.4.5
     ports:
-      - "3000:3000" # Die Grafana Web-Oberfläche
+      - "3000:3000"
     depends_on:
       - prometheus
       - jaeger
+      - loki # Grafana verbindet sich auch mit Loki

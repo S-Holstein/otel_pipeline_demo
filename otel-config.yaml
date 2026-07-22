@@ -3,6 +3,8 @@ receivers:
     protocols:
       grpc:
         endpoint: "0.0.0.0:4317"
+      http:
+        endpoint: "0.0.0.0:4318" # Intern im Container aktiv lassen, Port-Mapping im Docker reicht zu löschen
 
 exporters:
   # Aktualisierter Pfad für Prometheus v3 Native OTLP
@@ -11,10 +13,15 @@ exporters:
     tls:
       insecure: true
 
-
   # Exportiert Traces via OTLP gRPC an Jaeger
   otlp/jaeger:
     endpoint: "jaeger:4317"
+    tls:
+      insecure: true
+
+  # NEU: Exportiert Logs via OTLP HTTP direkt an die native OTLP-Schnittstelle von Loki
+  otlphttp/loki:
+    endpoint: "http://loki:3100/otlp" # Wichtig: Loki erwartet hier die URL mit /otlp Endung
     tls:
       insecure: true
 
@@ -26,9 +33,15 @@ service:
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/prometheus] # Angepasst auf OTLP
+      exporters: [otlphttp/prometheus]
 
     traces:
       receivers: [otlp]
       processors: [batch]
       exporters: [otlp/jaeger]
+
+    # NEU: Die Log-Pipeline aktivieren
+    logs:
+      receivers: [otlp]
+      processors: [batch] # Nutzt den Batch-Processor für bessere Performance
+      exporters: [otlphttp/loki]
