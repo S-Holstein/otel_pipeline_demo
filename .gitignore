@@ -1,2 +1,4 @@
 .idea
 sandbox.py
+__pycache__
+grafana-provisioning
