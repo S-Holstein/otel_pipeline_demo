@@ -12,7 +12,6 @@ from operaton.external_task.external_task_worker import ExternalTaskWorker
 # OTel API Imports
 from opentelemetry import metrics, trace
 from pdf_service import generate_pdf_document
-# from opentelemetry.context import get_current
 
 # Logger, Meter und Tracer lokal für dieses Modul holen
 logger = logging.getLogger(__name__)

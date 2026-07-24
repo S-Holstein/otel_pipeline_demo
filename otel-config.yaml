@@ -19,9 +19,15 @@ exporters:
     tls:
       insecure: true
 
-  # NEU: Exportiert Logs via OTLP HTTP direkt an die native OTLP-Schnittstelle von Loki
+  # Exportiert Traces zusätzlich via OTLP gRPC an Tempo (paralleler Trace-Backend-Vergleich)
+  otlp/tempo:
+    endpoint: "tempo:4317"
+    tls:
+      insecure: true
+
+  # Exportiert Logs via OTLP HTTP direkt an die native OTLP-Schnittstelle von Loki
   otlphttp/loki:
-    endpoint: "http://loki:3100/otlp" # Wichtig: Loki erwartet hier die URL mit /otlp Endung
+    endpoint: "http://loki:3100/otlp"
     tls:
       insecure: true
 
@@ -38,10 +44,9 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/jaeger]
+      exporters: [otlp/jaeger, otlp/tempo] # Traces gehen gleichzeitig an beide Backends
 
-    # NEU: Die Log-Pipeline aktivieren
     logs:
       receivers: [otlp]
-      processors: [batch] # Nutzt den Batch-Processor für bessere Performance
+      processors: [batch]
       exporters: [otlphttp/loki]

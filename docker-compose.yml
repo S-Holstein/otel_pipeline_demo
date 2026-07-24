@@ -49,7 +49,23 @@ services:
     image: grafana/grafana:12.4.5
     ports:
       - "3000:3000"
+    volumes:
+      # Hier wird die Konfiguration in das richtige Verzeichnis im Container gespiegelt
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin # Optional: Setzt das Start-Passwort
     depends_on:
       - prometheus
+      - loki
       - jaeger
-      - loki # Grafana verbindet sich auch mit Loki
+
+  tempo:
+    image: grafana/tempo:2.6.0
+    command: [ "-config.file=/etc/tempo/tempo.yaml" ]
+    volumes:
+      - ./tempo.yaml:/etc/tempo/tempo.yaml
+    ports:
+      - "3200:3200"   # Tempo Query API
+      - "4318:4318"   # optional, falls Tempo direkt OTLP/HTTP empfangen soll
+    depends_on:
+      - otel-collector
