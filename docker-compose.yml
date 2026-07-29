@@ -13,10 +13,11 @@ services:
     command: ["--config=/etc/otel-col/config.yaml"]
     ports:
       - "4317:4317" # Nimmt Metriken, Traces UND Logs via gRPC an
-      - "8889:8889"
     depends_on:
       - operaton
       - loki # Wartet, bis Loki bereit ist
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Verbindet den Container mit dem WSL-Host
 
   prometheus:
     image: prom/prometheus:v3.13.1

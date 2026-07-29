@@ -3,7 +3,8 @@ import logging
 
 # WICHTIG: Telemetry sofort als Erstes initialisieren!
 from telemetry import init_telemetry
-init_telemetry(service_name="operaton-python-worker")
+SERVICE_NAME="operaton-python-worker"
+init_telemetry(service_name=SERVICE_NAME)
 
 # Operaton SDK Imports
 from operaton.external_task.external_task import ExternalTask, TaskResult
@@ -11,6 +12,8 @@ from operaton.external_task.external_task_worker import ExternalTaskWorker
 
 # OTel API Imports
 from opentelemetry import metrics, trace
+from opentelemetry.propagate import inject
+from opentelemetry.trace import set_span_in_context
 from pdf_service import generate_pdf_document
 
 # Logger, Meter und Tracer lokal für dieses Modul holen
@@ -27,7 +30,8 @@ tracer = trace.get_tracer("operaton.worker.demo")
 
 # Worker Konfiguration
 config = {
-    "baseUrl": "http://localhost:8080/engine-rest",
+    # "baseUrl": "http://localhost:8080/engine-rest",
+    "baseUrl": "http://docker.internal",
     "maxTasks": 1,
     "lockDuration": 10000,
     "asyncResponseTimeout": 5000,
@@ -41,7 +45,7 @@ def handle_task(task: ExternalTask) -> TaskResult:
     task_id = task.get_task_id()
     activity_id = task.get_activity_id()
     instance_id = task.get_process_instance_id()
-
+    print(task_id)
     logger.info(
         "Task erfolgreich vom Operaton-Server abgeholt",
         extra={"operaton.task_id": task_id, "operaton.process_instance_id": instance_id}
@@ -51,6 +55,15 @@ def handle_task(task: ExternalTask) -> TaskResult:
         main_span.set_attribute("operaton.task_id", str(task_id))
         main_span.set_attribute("operaton.activity_id", str(activity_id))
         main_span.set_attribute("operaton.process_instance_id", str(instance_id))
+
+        # Trace-Context (W3C traceparent) des Haupt-Spans in einen Carrier
+        # injizieren, damit der nachgelagerte Multi-Instance-Worker
+        # (invoice-item-processing) seine Spans als Kinder dieses Spans
+        # anlegen kann. Ohne das würde jeder Worker-Prozess seine eigene,
+        # isolierte Trace-ID erzeugen.
+        trace_carrier = {}
+        inject(trace_carrier, context=set_span_in_context(main_span))
+        trace_parent = trace_carrier.get("traceparent")
 
         generate_pdf_document()
 
@@ -69,11 +82,28 @@ def handle_task(task: ExternalTask) -> TaskResult:
                 task_counter.add(1, {"task_topic": "invoice-processing", "status": "success"})
                 main_span.set_status(trace.StatusCode.OK)
 
+                # NEU: Liste von Rechnungspositionen ermitteln, die im
+                # nachfolgenden Multi-Instance-Task ("invoice-item-processing")
+                # jeweils einzeln verarbeitet werden sollen.
+                invoice_items = fetch_invoice_items(instance_id)
+                main_span.set_attribute("invoice.item_count", len(invoice_items))
+
                 logger.info(
                     "Task erfolgreich verarbeitet und E-Mail versendet.",
-                    extra={"operaton.status": "success", "invoice.type": "standard"}
+                    extra={
+                        "operaton.status": "success",
+                        "invoice.type": "standard",
+                        "invoice.item_count": len(invoice_items)
+                    }
                 )
-                return task.complete()
+
+                # Die Liste wird als Prozessvariable gesetzt, damit der
+                # nachfolgende Multi-Instance-Task (camunda:collection)
+                # darauf zugreifen kann.
+                return task.complete(global_variables={
+                    "invoiceItems": invoice_items,
+                    "otelTraceContext": trace_parent
+                })
 
             except Exception as e:
                 email_span.record_exception(e)
@@ -99,6 +129,16 @@ def handle_task(task: ExternalTask) -> TaskResult:
                     error_details="Fehler beim SMTP-Versand. Details im OTel Trace.",
                     max_retries=0, retry_timeout=0
                 )
+
+
+def fetch_invoice_items(instance_id) -> list:
+    """
+    Platzhalter: liefert die Liste der Rechnungspositionen, die im
+    nachgelagerten Multi-Instance-Task einzeln abgearbeitet werden.
+    Hier durch echte Datenbank-/Business-Logik ersetzen.
+    """
+    return [f"INV-{instance_id}-{i:03d}" for i in range(1, 4)]
+
 
 if __name__ == "__main__":
     logger.info(

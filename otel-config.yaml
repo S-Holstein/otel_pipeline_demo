@@ -4,28 +4,34 @@ receivers:
       grpc:
         endpoint: "0.0.0.0:4317"
       http:
-        endpoint: "0.0.0.0:4318" # Intern im Container aktiv lassen, Port-Mapping im Docker reicht zu löschen
+        endpoint: "0.0.0.0:4318" # Wichtig für den Legacy Worker
+
+  # Der Prometheus-Receiver für den Legacy-Worker
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'legacy-application'
+          scrape_interval: 10s
+          metrics_path: '/metrics'
+          static_configs:
+            - targets: ['host.docker.internal:9100']
 
 exporters:
-  # Aktualisierter Pfad für Prometheus v3 Native OTLP
   otlphttp/prometheus:
     endpoint: "http://prometheus:9090/api/v1/otlp"
     tls:
       insecure: true
 
-  # Exportiert Traces via OTLP gRPC an Jaeger
   otlp/jaeger:
     endpoint: "jaeger:4317"
     tls:
       insecure: true
 
-  # Exportiert Traces zusätzlich via OTLP gRPC an Tempo (paralleler Trace-Backend-Vergleich)
   otlp/tempo:
     endpoint: "tempo:4317"
     tls:
       insecure: true
 
-  # Exportiert Logs via OTLP HTTP direkt an die native OTLP-Schnittstelle von Loki
   otlphttp/loki:
     endpoint: "http://loki:3100/otlp"
     tls:
@@ -37,8 +43,10 @@ processors:
 service:
   pipelines:
     metrics:
-      receivers: [otlp]
+      # Hier liest der Collector OTLP-Push UND Prometheus-Pull ein
+      receivers: [otlp, prometheus]
       processors: [batch]
+      # Der Collector übersetzt die Prometheus-Daten automatisch in OTLP für Prometheus v3
       exporters: [otlphttp/prometheus]
 
     traces:

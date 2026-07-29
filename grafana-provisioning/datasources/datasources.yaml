@@ -15,7 +15,7 @@ datasources:
       httpMethod: POST
       # Hier wird die Exemplar-Verknüpfung zu Jaeger konfiguriert
       exemplarTraceIdDestinations:
-        - name: trace_id               # Entspricht Ihrem "Label name: trace_id"
+        - name: trace_id               # Entspricht dem "Label name: trace_id"
           datasourceUid: jaeger-datasource-uid # Verweist direkt auf Jaeger
 
 
@@ -40,7 +40,7 @@ datasources:
             value: 'service_name'
         customQuery: true
         #query: '{}'
-        query: '{service_name="operaton-python-worker"} | trace_id = "$${__trace.traceId}"'
+        query: '{service_name=~"operaton-.*"} | trace_id = "$${__trace.traceId}"'
 
 
 
@@ -81,4 +81,4 @@ datasources:
           - key: 'service.name'
             value: 'service_name'
         customQuery: true
-        query: '{service_name="operaton-python-worker"} | trace_id = "$${__trace.traceId}"'
+        query: '{service_name=~"operaton-.*"} | trace_id = "$${__trace.traceId}"'
