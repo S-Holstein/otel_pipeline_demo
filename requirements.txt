@@ -13,6 +13,7 @@ opentelemetry-proto==1.43.0
 opentelemetry-sdk==1.43.0
 opentelemetry-semantic-conventions==0.64b0
 operaton_external_task_client_python3==1.0.4
+prometheus_client==0.26.0
 protobuf==7.35.1
 pydantic==2.13.4
 pydantic_core==2.46.4

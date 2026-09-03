@@ -1,12 +1,12 @@
 import time
 import logging
-# WICHTIG: Das native Prometheus SDK importieren
+# Das native Prometheus SDK importieren
 from prometheus_client import start_http_server, Counter
 
-# Operaton SDK Imports (Identisch!)
+# Operaton SDK Imports (Identisch)
 from operaton.external_task.external_task import ExternalTask, TaskResult
 from operaton.external_task.external_task_worker import ExternalTaskWorker
-from pdf_service import generate_pdf_document
+from src.test_module.pdf_service import generate_pdf_document
 
 # Standard-Logging (Normales stdout/stderr, keine OTel-Verknüpfung)
 logging.basicConfig(level=logging.INFO)
@@ -36,16 +36,15 @@ config = {
 
 
 # ==========================================
-# WORKER LOGIK (Identischer Ablauf, kein Tracing!)
+# WORKER LOGIK (Identischer Ablauf, kein Tracing)
 # ==========================================
 def handle_task(task: ExternalTask) -> TaskResult:
     task_id = task.get_task_id()
     instance_id = task.get_process_instance_id()
 
-    # Normales Logging ohne OTel-Kontext (Trace-IDs fehlen hier im Log-Output!)
+    # Normales Logging ohne OTel-Kontext (Trace-IDs fehlen hier im Log-Output)
     logger.info(f"Task {task_id} erfolgreich vom Operaton-Server abgeholt.")
 
-    # KEIN Tracer-Span hier!
     generate_pdf_document()
 
     logger.info("Rufe Kundendaten aus der PostgreSQL-Datenbank ab.")
@@ -61,9 +60,12 @@ def handle_task(task: ExternalTask) -> TaskResult:
         # Prometheus SDK Syntax zum Hochzählen mit Labels
         task_counter.labels(task_topic="invoice-processing", status="success").inc()
 
-        logger.info("Task erfolgreich verarbeitet und E-Mail versendet.")
-        return task.complete()
+        invoice_items = fetch_invoice_items(instance_id)
 
+        logger.info("Task erfolgreich verarbeitet und E-Mail versendet.")
+        return task.complete(global_variables={
+            "invoiceItems": invoice_items,
+        })
     except Exception as e:
         # Prometheus SDK Syntax für den Fehlerfall
         task_counter.labels(task_topic="invoice-processing", status="error").inc()
@@ -76,10 +78,18 @@ def handle_task(task: ExternalTask) -> TaskResult:
         )
 
 
+def fetch_invoice_items(instance_id) -> list:
+    """
+    Platzhalter: liefert die Liste der Rechnungspositionen, die im
+    nachgelagerten Multi-Instance-Task einzeln abgearbeitet werden.
+    """
+    return [f"INV-{instance_id}-{i:03d}" for i in range(1, 4)]
+
+
 if __name__ == "__main__":
     logger.info("Starte LEGACY Operaton Python-Worker auf Topic: 'invoice-processing'")
 
-    # Eindeutige ID für den zweiten Worker, damit sie sich im Operaton-Server nicht beißen
+    # Eindeutige ID für den zweiten Worker, damit sie sich im Operaton-Server nicht beeinflussen
     ExternalTaskWorker(worker_id="python-legacy-worker-2", config=config).subscribe(
         "invoice-processing",
         handle_task

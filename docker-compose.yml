@@ -9,20 +9,20 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.156.0
     volumes:
-      - ./otel-config.yaml:/etc/otel-col/config.yaml
+      - ./config/otel-config.yaml:/etc/otel-col/config.yaml
     command: ["--config=/etc/otel-col/config.yaml"]
     ports:
       - "4317:4317" # Nimmt Metriken, Traces UND Logs via gRPC an
     depends_on:
       - operaton
-      - loki # Wartet, bis Loki bereit ist
+      - loki
     extra_hosts:
       - "host.docker.internal:host-gateway" # Verbindet den Container mit dem WSL-Host
 
   prometheus:
     image: prom/prometheus:v3.13.1
     volumes:
-      - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus.yaml:/etc/prometheus/prometheus.yml
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--web.enable-otlp-receiver"
@@ -39,12 +39,12 @@ services:
     environment:
       - COLLECTOR_OTLP_ENABLED=true
 
-  # NEU: Loki Service für die Log-Speicherung
+  # Loki Service für die Log-Speicherung
   loki:
     image: grafana/loki:3.0.0
     command: -config.file=/etc/loki/local-config.yaml
     ports:
-      - "3100:3100" # Die OTLP-Schnittstelle von Loki läuft hierüber
+      - "3100:3100" # Die OTLP-Schnittstelle von Loki
 
   grafana:
     image: grafana/grafana:12.4.5
@@ -64,7 +64,7 @@ services:
     image: grafana/tempo:2.6.0
     command: [ "-config.file=/etc/tempo/tempo.yaml" ]
     volumes:
-      - ./tempo.yaml:/etc/tempo/tempo.yaml
+      - ./config/tempo.yaml:/etc/tempo/tempo.yaml
     ports:
       - "3200:3200"   # Tempo Query API
       - "4318:4318"   # optional, falls Tempo direkt OTLP/HTTP empfangen soll

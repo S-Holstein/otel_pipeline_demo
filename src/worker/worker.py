@@ -2,7 +2,7 @@ import time
 import logging
 
 # WICHTIG: Telemetry sofort als Erstes initialisieren!
-from telemetry import init_telemetry
+from src.otel_setup.telemetry import init_telemetry
 SERVICE_NAME="operaton-python-worker"
 init_telemetry(service_name=SERVICE_NAME)
 
@@ -14,19 +14,19 @@ from operaton.external_task.external_task_worker import ExternalTaskWorker
 from opentelemetry import metrics, trace
 from opentelemetry.propagate import inject
 from opentelemetry.trace import set_span_in_context
-from pdf_service import generate_pdf_document
+from src.test_module.pdf_service import generate_pdf_document
 
 # Logger, Meter und Tracer lokal für dieses Modul holen
 logger = logging.getLogger(__name__)
-
 meter = metrics.get_meter("operaton.worker.demo")
+tracer = trace.get_tracer("operaton.worker.demo")
+
 task_counter = meter.create_counter(
     "processed_tasks_total",
     description="Gesamtanzahl der verarbeiteten Operaton-Tasks",
     unit="1"
 )
 
-tracer = trace.get_tracer("operaton.worker.demo")
 
 # Worker Konfiguration
 config = {
@@ -56,7 +56,7 @@ def handle_task(task: ExternalTask) -> TaskResult:
         main_span.set_attribute("operaton.activity_id", str(activity_id))
         main_span.set_attribute("operaton.process_instance_id", str(instance_id))
 
-        # Trace-Context (W3C traceparent) des Haupt-Spans in einen Carrier
+        # Trace-Context des Haupt-Spans in einen Carrier
         # injizieren, damit der nachgelagerte Multi-Instance-Worker
         # (invoice-item-processing) seine Spans als Kinder dieses Spans
         # anlegen kann. Ohne das würde jeder Worker-Prozess seine eigene,
@@ -82,7 +82,7 @@ def handle_task(task: ExternalTask) -> TaskResult:
                 task_counter.add(1, {"task_topic": "invoice-processing", "status": "success"})
                 main_span.set_status(trace.StatusCode.OK)
 
-                # NEU: Liste von Rechnungspositionen ermitteln, die im
+                # Liste von Rechnungspositionen ermitteln, die im
                 # nachfolgenden Multi-Instance-Task ("invoice-item-processing")
                 # jeweils einzeln verarbeitet werden sollen.
                 invoice_items = fetch_invoice_items(instance_id)
@@ -97,9 +97,6 @@ def handle_task(task: ExternalTask) -> TaskResult:
                     }
                 )
 
-                # Die Liste wird als Prozessvariable gesetzt, damit der
-                # nachfolgende Multi-Instance-Task (camunda:collection)
-                # darauf zugreifen kann.
                 return task.complete(global_variables={
                     "invoiceItems": invoice_items,
                     "otelTraceContext": trace_parent
@@ -135,7 +132,6 @@ def fetch_invoice_items(instance_id) -> list:
     """
     Platzhalter: liefert die Liste der Rechnungspositionen, die im
     nachgelagerten Multi-Instance-Task einzeln abgearbeitet werden.
-    Hier durch echte Datenbank-/Business-Logik ersetzen.
     """
     return [f"INV-{instance_id}-{i:03d}" for i in range(1, 4)]
 

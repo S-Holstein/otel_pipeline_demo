@@ -2,7 +2,7 @@ apiVersion: 1
 
 datasources:
   # =========================================================================
-  # 1. PROMETHEUS (Exakt auf Ihren dritten Screenshot abgestimmt)
+  # 1. PROMETHEUS
   # =========================================================================
   - name: Prometheus
     uid: prometheus-datasource-uid
@@ -20,7 +20,7 @@ datasources:
 
 
   # =========================================================================
-  # 2. JAEGER (Korrigierte Version - blockiert nicht mehr)
+  # 2. JAEGER
   # =========================================================================
   - name: Jaeger
     uid: jaeger-datasource-uid
@@ -40,12 +40,12 @@ datasources:
             value: 'service_name'
         customQuery: true
         #query: '{}'
-        query: '{service_name=~"operaton-.*"} | trace_id = "$${__trace.traceId}"'
+        query: '{service_name=~".+"} | trace_id = "$${__trace.traceId}"'
 
 
 
   # =========================================================================
-  # 3. LOKI (Abgestimmt auf Ihren Screenshot)
+  # 3. LOKI
   # =========================================================================
   - name: Loki
     uid: loki-datasource-uid
@@ -81,4 +81,4 @@ datasources:
           - key: 'service.name'
             value: 'service_name'
         customQuery: true
-        query: '{service_name=~"operaton-.*"} | trace_id = "$${__trace.traceId}"'
+        query: '{service_name=~".+"} | trace_id = "$${__trace.traceId}"'

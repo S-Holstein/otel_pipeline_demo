@@ -2,7 +2,7 @@ import time
 import logging
 
 # WICHTIG: Telemetry sofort als Erstes initialisieren!
-from telemetry import init_telemetry
+from src.otel_setup.telemetry import init_telemetry
 SERVICE_NAME="operaton-invoice-item-worker"
 init_telemetry(service_name=SERVICE_NAME)
 
@@ -16,15 +16,15 @@ from opentelemetry.propagate import extract
 
 # Logger, Meter und Tracer lokal für dieses Modul holen
 logger = logging.getLogger(__name__)
-
 meter = metrics.get_meter("operaton.worker.demo")
+tracer = trace.get_tracer("operaton.worker.demo")
+
 task_counter = meter.create_counter(
     "processed_invoice_items_total",
     description="Gesamtanzahl der verarbeiteten Rechnungspositionen (Loop-Instanzen)",
     unit="1"
 )
 
-tracer = trace.get_tracer("operaton.worker.demo")
 
 # Worker Konfiguration
 config = {
@@ -74,9 +74,6 @@ def handle_task(task: ExternalTask) -> TaskResult:
         try:
             with tracer.start_as_current_span("Process-Invoice-Item"):
                 logger.info("Verarbeite Rechnungsposition %s ...", invoice_item)
-                # Platzhalter: hier die eigentliche Verarbeitung der
-                # einzelnen Rechnungsposition einfügen (z.B. Buchung,
-                # Validierung, Weiterleitung an Downstream-System).
                 time.sleep(0.2)
 
             task_counter.add(1, {"task_topic": "invoice-item-processing", "status": "success"})

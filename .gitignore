@@ -1,3 +1,5 @@
 .idea
 sandbox.py
 __pycache__
+logs
+setup_demo.sh
