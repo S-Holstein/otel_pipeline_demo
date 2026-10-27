@@ -12,6 +12,7 @@ sleep 1
 ########################################################
 
 echo "Starte Docker-Container neu..."
+sudo docker stop $(sudo docker ps -q)
 sudo docker compose down --volumes --remove-orphans
 sudo docker volume prune -f
 sudo docker compose up -d

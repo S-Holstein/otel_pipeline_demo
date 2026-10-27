@@ -79,6 +79,7 @@ def handle_task(task: ExternalTask) -> TaskResult:
                     raise ConnectionError("SMTP Server antwortet nicht (Timeout nach 1.5s)!")
                 time.sleep(0.2)
 
+                # Metrik
                 task_counter.add(1, {"task_topic": "invoice-processing", "status": "success"})
                 main_span.set_status(trace.StatusCode.OK)
 
@@ -99,13 +100,14 @@ def handle_task(task: ExternalTask) -> TaskResult:
 
                 return task.complete(global_variables={
                     "invoiceItems": invoice_items,
-                    "otelTraceContext": trace_parent
+                    "otelTraceContext": trace_parent            # hier trace id für parent-child Verbindung übergeben
                 })
 
             except Exception as e:
                 email_span.record_exception(e)
                 email_span.set_status(trace.StatusCode.ERROR)
 
+                # Metrik
                 task_counter.add(1,
                                  {"task_topic": "invoice-processing", "status": "error"},
                                  # context=get_current()

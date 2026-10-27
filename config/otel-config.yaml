@@ -49,38 +49,38 @@ exporters:
 processors:
   batch:
 
-  tail_sampling:
-    decision_wait: 60s   # beeinflusst auch die Dauer bis Spans/Traces an Jaeger/Observability gesendet werden
-    num_traces: 100000
-    policies:
-      - name: keep_discovery_always
-        type: ottl_condition
-        ottl_condition:
-          error_mode: ignore
-          span:
-            - 'name == "Execute:sentinel-data-ingestion_workflow"'
-
-      - name: errors
-        type: status_code
-        status_code: { status_codes: [ ERROR ] }
-
-#      - name: slow_iterations
-#        type: latency
-#        latency: { threshold_ms: 1000 }
-
-      - name: iteration_baseline
-        type: and
-        and:
-          and_sub_policy:
-            - name: is_iteration
-              type: ottl_condition
-              ottl_condition:
-                error_mode: ignore
-                span:
-                  - 'name == "Execute:sentinel-scene-ingestion_workflow"'
-            - name: sample_rate
-              type: probabilistic
-              probabilistic: { sampling_percentage: 50 }
+#  tail_sampling:
+#    decision_wait: 60s   # beeinflusst auch die Dauer bis Spans/Traces an Jaeger/Observability gesendet werden
+#    num_traces: 100000
+#    policies:
+#      - name: keep_discovery_always
+#        type: ottl_condition
+#        ottl_condition:
+#          error_mode: ignore
+#          span:
+#            - 'name == "Execute:sentinel-data-ingestion_workflow"'
+#
+#      - name: errors
+#        type: status_code
+#        status_code: { status_codes: [ ERROR ] }
+#
+##      - name: slow_iterations
+##        type: latency
+##        latency: { threshold_ms: 1000 }
+#
+#      - name: iteration_baseline
+#        type: and
+#        and:
+#          and_sub_policy:
+#            - name: is_iteration
+#              type: ottl_condition
+#              ottl_condition:
+#                error_mode: ignore
+#                span:
+#                  - 'name == "Execute:sentinel-scene-ingestion_workflow"'
+#            - name: sample_rate
+#              type: probabilistic
+#              probabilistic: { sampling_percentage: 90 }
 
 service:
   telemetry:
@@ -103,8 +103,8 @@ service:
 
     traces:
       receivers: [otlp]
-      processors: [tail_sampling, batch]   # <- Reihenfolge wichtig
-#      processors: [batch]
+#      processors: [tail_sampling, batch]   # <- Reihenfolge wichtig
+      processors: [batch]
       exporters: [otlp/jaeger, otlp/tempo] # Traces gehen gleichzeitig an beide Backends
 
     logs:
